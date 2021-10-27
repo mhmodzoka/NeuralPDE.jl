@@ -1038,8 +1038,11 @@ function SciMLBase.symbolic_discretize(pde_system::PDESystem, discretization::Ph
     symbolic_pde_loss_functions, symbolic_bc_loss_functions
 end
 
-# Convert a PDE problem into an OptimizationProblem
-function SciMLBase.discretize(pde_system::PDESystem, discretization::PhysicsInformedNN)
+# get pde and BCs loss functions
+"""
+This is the same as "SciMLBase.discretize", but in returns "pde_loss_functions" and "bc_loss_functions" besides the "GalacticOptim.OptimizationProblem"
+"""
+function discretize_and_return_loss_functions(pde_system::PDESystem, discretization::PhysicsInformedNN)
     eqs = pde_system.eqs
     bcs = pde_system.bcs
 
@@ -1172,8 +1175,14 @@ function SciMLBase.discretize(pde_system::PDESystem, discretization::PhysicsInfo
             end
             return loss_function(θ) + _additional_loss(phi, θ)
         end
-end
+    end
 
     f = OptimizationFunction(loss_function_, GalacticOptim.AutoZygote())
-    GalacticOptim.OptimizationProblem(f, flat_initθ)
+    return GalacticOptim.OptimizationProblem(f, flat_initθ), pde_loss_functions, bc_loss_functions
+end
+
+
+# Convert a PDE problem into an OptimizationProblem
+function SciMLBase.discretize(pde_system::PDESystem, discretization::PhysicsInformedNN)
+    return discretize_and_return_loss_functions(pde_system, discretization)[1]
 end
