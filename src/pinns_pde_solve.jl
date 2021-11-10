@@ -1040,9 +1040,10 @@ end
 
 # get pde and BCs loss functions
 """
-This is the same as "SciMLBase.discretize", but in returns "pde_loss_functions" and "bc_loss_functions" besides the "GalacticOptim.OptimizationProblem"
+This is the same as "SciMLBase.discretize", but in returns "pde_loss_functions", "bc_loss_functions" and "train_sets" besides the "GalacticOptim.OptimizationProblem".
+It can also accept optional argument "train_sets"
 """
-function discretize_and_return_loss_functions(pde_system::PDESystem, discretization::PhysicsInformedNN)
+function discretize_and_return_loss_functions_training_sets(pde_system::PDESystem, discretization::PhysicsInformedNN; train_sets=nothing)
     eqs = pde_system.eqs
     bcs = pde_system.bcs
 
@@ -1102,12 +1103,16 @@ function discretize_and_return_loss_functions(pde_system::PDESystem, discretizat
                                               bc_indvars=bc_indvar,
                                               integration_indvars=integration_indvar) for (bc, bc_indvar, integration_indvar) in zip(bcs, bc_indvars, bc_integration_vars)]
 
+    if isnothing(train_sets)
+        if strategy isa GridTraining
+            train_sets = generate_training_sets(domains,dx,eqs,bcs,eltypeθ,
+            dict_indvars,dict_depvars)
+        end
+    end
+
     pde_loss_functions, bc_loss_functions =
     if strategy isa GridTraining
-        dx = strategy.dx
-
-        train_sets = generate_training_sets(domains,dx,eqs,bcs,eltypeθ,
-                                            dict_indvars,dict_depvars)
+        dx = strategy.dx       
 
         # the points in the domain and on the boundary
         pde_train_sets, bcs_train_sets = train_sets
@@ -1178,11 +1183,17 @@ function discretize_and_return_loss_functions(pde_system::PDESystem, discretizat
     end
 
     f = OptimizationFunction(loss_function_, GalacticOptim.AutoZygote())
-    return GalacticOptim.OptimizationProblem(f, flat_initθ), pde_loss_functions, bc_loss_functions
+    return GalacticOptim.OptimizationProblem(f, flat_initθ), pde_loss_functions, bc_loss_functions, train_sets
 end
 
+"""
+This is the same as "SciMLBase.discretize", but in returns "pde_loss_functions" and "bc_loss_functions" besides the "GalacticOptim.OptimizationProblem"
+"""
+function discretize_and_return_loss_functions(pde_system::PDESystem, discretization::PhysicsInformedNN)
+    return discretize_and_return_loss_functions_training_sets(pde_system, discretization)[1:3]
+end
 
 # Convert a PDE problem into an OptimizationProblem
 function SciMLBase.discretize(pde_system::PDESystem, discretization::PhysicsInformedNN)
-    return discretize_and_return_loss_functions(pde_system, discretization)[1]
+    return discretize_and_return_loss_functions_training_sets(pde_system, discretization)[1]
 end
