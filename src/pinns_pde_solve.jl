@@ -1105,14 +1105,14 @@ function discretize_and_return_loss_functions_training_sets(pde_system::PDESyste
 
     if isnothing(train_sets)
         if strategy isa GridTraining
+            dx = strategy.dx
             train_sets = generate_training_sets(domains,dx,eqs,bcs,eltypeθ,
             dict_indvars,dict_depvars)
         end
     end
 
     pde_loss_functions, bc_loss_functions =
-    if strategy isa GridTraining
-        dx = strategy.dx       
+    if strategy isa GridTraining              
 
         # the points in the domain and on the boundary
         pde_train_sets, bcs_train_sets = train_sets
